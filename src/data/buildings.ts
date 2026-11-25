@@ -1,6 +1,6 @@
 import type { BuildingType } from '../core/types'
 import { fmt } from '../core/util'
-import { GUARDPOST_UPKEEP, SEC_POST, STORAGE_INCOME, MARKET_INCOME } from './balance'
+import { GUARDPOST_UPKEEP, SEC_POST, STORAGE_INCOME, /* MARKET_INCOME */ } from './balance'
 
 export interface BuildingDef {
   label: string
