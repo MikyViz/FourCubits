@@ -4,16 +4,14 @@ import { resolveEvent } from '../core/actions'
 import { game } from '../core/store'
 import type { Resources } from '../core/types'
 import { canAfford } from '../core/util'
+import { t } from '../i18n'
 import { describePending } from '../systems/events'
 
 const emit = defineEmits<{ message: [text: string] }>()
 const ev = computed(() => describePending(game))
 
-const NAMES: Record<keyof Resources, string> = {
-  people: 'чел.', money: 'ден.', permits: 'разр.', security: 'безоп.', morale: 'морали',
-}
 const costText = (cost?: Partial<Resources>) =>
-  cost ? (Object.keys(cost) as (keyof Resources)[]).map((k) => `${cost[k]} ${NAMES[k]}`).join(', ') : ''
+  cost ? (Object.keys(cost) as (keyof Resources)[]).map((k) => `${cost[k]} ${t('cost.' + k)}`).join(', ') : ''
 
 function choose(i: number) {
   emit('message', resolveEvent(game, i) ?? '')
@@ -41,6 +39,6 @@ function choose(i: number) {
 h2 { margin: 0 0 8px; font-size: 1.2rem; }
 p { margin: 0 0 16px; line-height: 1.45; }
 .choices { display: flex; flex-direction: column; gap: 8px; }
-.choices button { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; text-align: left; }
+.choices button { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; text-align: start; }
 .cost { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
 </style>

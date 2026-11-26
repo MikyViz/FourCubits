@@ -1,11 +1,11 @@
 import { chance, weightedPick } from '../core/rng'
-import type { EventChoice, GameState } from '../core/types'
+import type { GameState, Resources } from '../core/types'
+import { diff } from '../data/difficulty'
 import { EVENTS } from '../data/events'
-
-const DAILY_EVENT_CHANCE = 0.35
+import { t } from '../i18n'
 
 export function eventTick(s: GameState) {
-  if (s.pendingEventId || !chance(s, DAILY_EVENT_CHANCE)) return
+  if (s.pendingEventId || !chance(s, diff(s).eventChance)) return
   const ev = weightedPick(s, EVENTS, (e) => e.weight(s))
   if (!ev) return
   s.pendingEventId = ev.id
@@ -16,10 +16,16 @@ export function eventTick(s: GameState) {
   }
 }
 
-// для UI: события с уже подставленным названием деревни
-export function describePending(s: GameState): { title: string; text: string; choices: EventChoice[] } | null {
+// для UI: событие с переведёнными текстами и названием деревни
+export function describePending(
+  s: GameState,
+): { title: string; text: string; choices: { label: string; cost?: Partial<Resources> }[] } | null {
   const ev = EVENTS.find((e) => e.id === s.pendingEventId)
   if (!ev) return null
   const v = s.villages.find((x) => x.id === s.pendingVillageId)
-  return { title: ev.title, text: ev.text.replace('{village}', v ? v.name : ''), choices: ev.choices }
+  return {
+    title: t(`ev.${ev.id}.title`),
+    text: t(`ev.${ev.id}.text`, { village: v ? t(`village.${v.id}`) : '' }),
+    choices: ev.choices.map((c, i) => ({ label: t(`ev.${ev.id}.c${i}`), cost: c.cost })),
+  }
 }

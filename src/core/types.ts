@@ -1,6 +1,19 @@
+export type Difficulty = 'easy' | 'normal' | 'hard'
+
+// сообщение для интерфейса: ключ словаря и параметры (могут быть вложенными сообщениями)
+export type Param = string | number | Msg
+export interface Msg {
+  key: string
+  params?: Record<string, Param>
+}
+export interface LogEntry {
+  day: number
+  msg: Msg
+}
+
 export type ResourceKey = 'people' | 'money' | 'permits' | 'security' | 'morale'
 export type Resources = Record<ResourceKey, number>
-export type BuildingType = 'house' | 'storage' | 'guardpost' //| 'market'
+export type BuildingType = 'house' | 'storage' | 'guardpost'
 
 export interface Building {
   id: number
@@ -16,8 +29,7 @@ export interface Building {
 
 // attitude: -2 (враждебная) ... +2 (дружественная)
 export interface Village {
-  id: string
-  name: string
+  id: string // north | east | south, имя берётся из словаря: village.<id>
   attitude: number
   x: number // положение на карте: от него зависит нагрузка на безопасность
   y: number
@@ -25,6 +37,7 @@ export interface Village {
 
 export interface GameState {
   day: number
+  difficulty: Difficulty
   rngState: number
   status: 'playing' | 'won' | 'lost'
   resources: Resources
@@ -37,7 +50,7 @@ export interface GameState {
   permitRequests: { arriveDay: number; gain: number }[] // поданные заявки на разрешения
   pendingEventId: string | null
   pendingVillageId: string | null
-  log: string[]
+  log: LogEntry[]
 }
 
 export interface EventCtx {
@@ -45,16 +58,13 @@ export interface EventCtx {
 }
 
 export interface EventChoice {
-  label: string
   cost?: Partial<Resources>
-  // возвращает строку для лога (необязательно)
-  apply: (s: GameState, ctx: EventCtx) => string | void
+  // возвращает пояснение для журнала (необязательно)
+  apply: (s: GameState, ctx: EventCtx) => Msg | void
 }
 
 export interface GameEvent {
-  id: string
-  title: string
-  text: string // можно использовать {village}
+  id: string // тексты в словаре: ev.<id>.title, ev.<id>.text, ev.<id>.c0, c1...
   weight: (s: GameState) => number
   needsVillage?: boolean
   choices: EventChoice[]

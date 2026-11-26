@@ -1,6 +1,6 @@
 import type { GameState } from '../core/types'
-import { log } from '../core/util'
-import { BUILDINGS } from '../data/buildings'
+import { addScrutiny, log } from '../core/util'
+import { ILLEGAL_SCRUTINY } from '../data/buildings'
 
 export function constructionTick(s: GameState) {
   if (s.day < s.frozenUntil) return // стройка заморожена
@@ -10,8 +10,8 @@ export function constructionTick(s: GameState) {
     if (b.daysLeft <= 0) {
       b.done = true
       if (!b.legal) {
-        s.scrutiny += 8
-        log(s, `${BUILDINGS[b.type].label} достроен вне границ, внимание растёт`)
+        addScrutiny(s, ILLEGAL_SCRUTINY)
+        log(s, 'log.builtIllegal', { b: { key: `b.${b.type}.name` } })
       }
     }
   }

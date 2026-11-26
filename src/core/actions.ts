@@ -1,21 +1,24 @@
-import { PERMIT_REQUEST_COST, PERMIT_REQUEST_DAYS, PERMIT_REQUEST_GAIN, PERMIT_REQUEST_MAX } from '../data/balance'
-import { BUILDINGS, buildCost, moveFee } from '../data/buildings'
+import { PERMIT_REQUEST_COST, PERMIT_REQUEST_DAYS, PERMIT_REQUEST_GAIN, PERMIT_REQUEST_MAX, ZONE_MONEY, ZONE_PERMITS } from '../data/balance'
+import { buildCost, moveFee } from '../data/buildings'
 import { EVENTS } from '../data/events'
+import { t } from '../i18n'
 import type { Building, BuildingType, GameState } from './types'
 import { addRes, canAfford, log, pay } from './util'
 
-// возвращает строку с ошибкой или null, если всё ок
+const bName = (type: BuildingType) => ({ key: `b.${type}.name` })
+
+// Функции возвращают текст ошибки (уже на текущем языке) или null, если всё получилось.
 export function build(s: GameState, type: BuildingType, x: number, y: number): string | null {
-  if (s.status !== 'playing') return 'Игра окончена'
-  if (s.pendingEventId) return 'Сначала решите событие'
-  if (s.day < s.frozenUntil) return 'Стройка заморожена'
-  if (x < 0 || y < 0 || x >= s.map.w || y >= s.map.h) return 'Вне карты'
-  if (s.buildings.some((b) => b.x === x && b.y === y)) return 'Клетка занята'
+  if (s.status !== 'playing') return t('err.gameOver')
+  if (s.pendingEventId) return t('err.resolveEvent')
+  if (s.day < s.frozenUntil) return t('err.frozen')
+  if (x < 0 || y < 0 || x >= s.map.w || y >= s.map.h) return t('err.outOfMap')
+  if (s.buildings.some((b) => b.x === x && b.y === y)) return t('err.cellTaken')
 
   const legal = s.map.legal[y * s.map.w + x]
   const { money, days } = buildCost(type, legal)
   const cost = { money }
-  if (!canAfford(s, cost)) return `Не хватает денег: нужно ${money}`
+  if (!canAfford(s, cost)) return t('err.needMoney', { n: money })
 
   pay(s, cost)
   s.buildings.push({
@@ -34,30 +37,32 @@ export function build(s: GameState, type: BuildingType, x: number, y: number): s
 
 // расширение разрешённой зоны: тратит разрешения и деньги, легализует уже стоящие постройки внутри
 export function extendLegalZone(s: GameState, cx: number, cy: number, r = 2): string | null {
-  const cost = { permits: 5, money: 60 }
-  if (s.status !== 'playing') return 'Игра окончена'
-  if (s.pendingEventId) return 'Сначала решите событие'
-  if (!canAfford(s, cost)) return 'Не хватает разрешений или денег'
+  const cost = { permits: ZONE_PERMITS, money: ZONE_MONEY }
+  if (s.status !== 'playing') return t('err.gameOver')
+  if (s.pendingEventId) return t('err.resolveEvent')
+  if (!canAfford(s, cost)) return t('err.zoneNeeds')
   pay(s, cost)
   for (let y = cy - r; y <= cy + r; y++)
     for (let x = cx - r; x <= cx + r; x++)
       if (x >= 0 && y >= 0 && x < s.map.w && y < s.map.h) s.map.legal[y * s.map.w + x] = true
   for (const b of s.buildings) if (s.map.legal[b.y * s.map.w + b.x]) b.legal = true
-  log(s, 'Зона расширена, постройки внутри легализованы')
+  log(s, 'log.zoneExtended')
   return null
 }
 
 export function resolveEvent(s: GameState, choiceIndex: number): string | null {
   const ev = EVENTS.find((e) => e.id === s.pendingEventId)
-  if (!ev) return 'Нет активного события'
+  if (!ev) return t('err.noEvent')
   const choice = ev.choices[choiceIndex]
-  if (!choice) return 'Нет такого варианта'
-  if (choice.cost && !canAfford(s, choice.cost)) return 'Не хватает ресурсов'
+  if (!choice) return t('err.noChoice')
+  if (choice.cost && !canAfford(s, choice.cost)) return t('err.noResources')
 
   if (choice.cost) pay(s, choice.cost)
   const village = s.villages.find((v) => v.id === s.pendingVillageId) ?? null
   const note = choice.apply(s, { village })
-  log(s, `${ev.title}: ${choice.label}${note ? ' — ' + note : ''}`)
+  const base = { title: { key: `ev.${ev.id}.title` }, choice: { key: `ev.${ev.id}.c${choiceIndex}` } }
+  if (note) log(s, 'log.eventNote', { ...base, note })
+  else log(s, 'log.event', base)
   s.pendingEventId = null
   s.pendingVillageId = null
   addRes(s, {}) // перенормировать клампы
@@ -78,18 +83,18 @@ export function moveQuote(b: Building, legal: boolean) {
 
 export function moveBuilding(s: GameState, id: number, x: number, y: number): string | null {
   const b = s.buildings.find((v) => v.id === id)
-  if (!b) return 'Постройка не найдена'
-  if (s.status !== 'playing') return 'Игра окончена'
-  if (s.pendingEventId) return 'Сначала решите событие'
-  if (s.day < s.frozenUntil) return 'Стройка заморожена'
-  if (b.done || b.placedDay !== s.day) return 'Переносить можно только в день установки'
-  if (x < 0 || y < 0 || x >= s.map.w || y >= s.map.h) return 'Вне карты'
-  if (b.x === x && b.y === y) return 'Это та же клетка'
-  if (s.buildings.some((v) => v.x === x && v.y === y)) return 'Клетка занята'
+  if (!b) return t('err.notFound')
+  if (s.status !== 'playing') return t('err.gameOver')
+  if (s.pendingEventId) return t('err.resolveEvent')
+  if (s.day < s.frozenUntil) return t('err.frozen')
+  if (b.done || b.placedDay !== s.day) return t('err.moveSameDay')
+  if (x < 0 || y < 0 || x >= s.map.w || y >= s.map.h) return t('err.outOfMap')
+  if (b.x === x && b.y === y) return t('err.sameCell')
+  if (s.buildings.some((v) => v.x === x && v.y === y)) return t('err.cellTaken')
 
   const legal = s.map.legal[y * s.map.w + x]
   const q = moveQuote(b, legal)
-  if (q.delta > 0 && !canAfford(s, { money: q.delta })) return `Не хватает денег: нужно ${q.delta}`
+  if (q.delta > 0 && !canAfford(s, { money: q.delta })) return t('err.needMoney', { n: q.delta })
 
   addRes(s, { money: -q.delta }) // за старое место возвращаем уплаченное, за новое берём цену и комиссию
   b.x = x
@@ -97,19 +102,19 @@ export function moveBuilding(s: GameState, id: number, x: number, y: number): st
   b.legal = legal
   b.daysLeft = q.days
   b.paid = q.money
-  log(s, `${BUILDINGS[b.type].label} перенесён (${q.delta >= 0 ? 'доплата' : 'возврат'} ${Math.abs(q.delta)})`)
+  log(s, q.delta >= 0 ? 'log.movedPay' : 'log.movedRefund', { b: bName(b.type), n: Math.abs(q.delta) })
   return null
 }
 
 // заявка на разрешения: платим сейчас, разрешения приходят через несколько дней
 export function requestPermits(s: GameState): string | null {
-  if (s.status !== 'playing') return 'Игра окончена'
-  if (s.pendingEventId) return 'Сначала решите событие'
-  if (s.permitRequests.length >= PERMIT_REQUEST_MAX) return `Уже ${PERMIT_REQUEST_MAX} заявки в пути, дождитесь ответа`
+  if (s.status !== 'playing') return t('err.gameOver')
+  if (s.pendingEventId) return t('err.resolveEvent')
+  if (s.permitRequests.length >= PERMIT_REQUEST_MAX) return t('err.requestsFull', { n: PERMIT_REQUEST_MAX })
   const cost = { money: PERMIT_REQUEST_COST }
-  if (!canAfford(s, cost)) return `Не хватает денег: нужно ${PERMIT_REQUEST_COST}`
+  if (!canAfford(s, cost)) return t('err.needMoney', { n: PERMIT_REQUEST_COST })
   pay(s, cost)
   s.permitRequests.push({ arriveDay: s.day + PERMIT_REQUEST_DAYS, gain: PERMIT_REQUEST_GAIN })
-  log(s, `Подана заявка на разрешения, ответ через ${PERMIT_REQUEST_DAYS} дн.`)
+  log(s, 'log.requestSent', { n: PERMIT_REQUEST_DAYS })
   return null
 }

@@ -2,6 +2,7 @@ import { constructionTick } from '../systems/construction'
 import { economyTick } from '../systems/economy'
 import { eventTick } from '../systems/events'
 import { pressureTick } from '../systems/pressure'
+import { diff } from '../data/difficulty'
 import type { GameState } from './types'
 import { log } from './util'
 
@@ -10,10 +11,10 @@ function checkEnd(s: GameState) {
   const r = s.resources
   if (r.morale <= 0 || r.people <= 0 || r.money < -200) {
     s.status = 'lost'
-    log(s, 'Поселение не выдержало')
-  } else if (r.people >= 40 && r.morale >= 40) {
+    log(s, 'log.lost')
+  } else if (r.people >= diff(s).winPeople && r.morale >= 40) {
     s.status = 'won'
-    log(s, 'Поселение устояло и выросло')
+    log(s, 'log.won')
   }
 }
 

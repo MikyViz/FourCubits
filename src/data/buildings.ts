@@ -1,40 +1,22 @@
-import type { BuildingType } from '../core/types'
-import { fmt } from '../core/util'
-import { GUARDPOST_UPKEEP, SEC_POST, STORAGE_INCOME, /* MARKET_INCOME */ } from './balance'
+import type { BuildingType, Difficulty } from '../core/types'
+import { DIFFICULTY } from './difficulty'
 
+// названия и описания лежат в словарях: b.<type>.name, b.<type>.desc
 export interface BuildingDef {
-  label: string
-  description: string // что даёт постройка, показывается в меню
   cost: number // деньги
   days: number // время стройки
   illegalCostMult: number // дешевле вне зоны...
   illegalDaysMult: number // ...и быстрее, но растёт внимание
 }
 
-// сколько внимания проверяющих добавляется, когда здание достроено вне границ
+// сколько внимания проверяющих добавляется (до множителя сложности), когда здание достроено вне границ
 export const ILLEGAL_SCRUTINY = 8
+export const illegalScrutiny = (d: Difficulty) => Math.round(ILLEGAL_SCRUTINY * DIFFICULTY[d].scrutinyMult * 10) / 10
 
 export const BUILDINGS: Record<BuildingType, BuildingDef> = {
-  house: {
-    label: 'Дом',
-    description: 'Жильё: +4 места для жителей. Новые семьи приезжают, только пока есть свободные места. Больше людей: больше денег, но и больше нагрузка на безопасность.',
-    cost: 120, days: 5, illegalCostMult: 0.6, illegalDaysMult: 0.5,
-  },
-  storage: {
-    label: 'Склад',
-    description: `Приносит +${STORAGE_INCOME} денег в день.`,
-    cost: 80, days: 3, illegalCostMult: 0.6, illegalDaysMult: 0.5,
-  },
-  // market: {
-  //   label: 'Магазин',
-  //   description: `Продаёт товары жителям. Приносит доход +${MARKET_INCOME} в день.`,
-  //   cost: 100, days: 4, illegalCostMult: 0.6, illegalDaysMult: 0.5,
-  // },
-  guardpost: {
-    label: 'Пост охраны',
-    description: `Восстанавливает безопасность: +${fmt(SEC_POST)} в день. Содержание: ${GUARDPOST_UPKEEP} денег в день.`,
-    cost: 120, days: 5, illegalCostMult: 0.6, illegalDaysMult: 0.5,
-  },
+  house: { cost: 120, days: 5, illegalCostMult: 0.6, illegalDaysMult: 0.5 },
+  storage: { cost: 80, days: 3, illegalCostMult: 0.6, illegalDaysMult: 0.5 },
+  guardpost: { cost: 120, days: 5, illegalCostMult: 0.6, illegalDaysMult: 0.5 },
 }
 
 // единственное место, где считается цена и срок: используют и стройка, и интерфейс

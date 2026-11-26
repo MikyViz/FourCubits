@@ -4,7 +4,6 @@
 export const MONEY_PER_PERSON = 1 // с каждого жителя в день
 export const STORAGE_INCOME = 5 // со склада в день
 export const GUARDPOST_UPKEEP = 2 // содержание поста в день
-//export const MARKET_INCOME = 6 // доход с магазина в день
 
 // безопасность: запас 0..100. Каждый день растёт от охраны и убывает от нагрузки
 export const SEC_BASE = 0.8 // базовое восстановление без постов
@@ -24,3 +23,7 @@ export const PERMIT_REQUEST_MAX = 3 // сколько заявок может б
 // порог, ниже которого семьи уезжают
 export const SEC_CRITICAL = 10
 export const SEC_LEAVE_EVERY = 3 // раз во сколько дней уезжает один человек
+
+// расширение зоны
+export const ZONE_PERMITS = 5
+export const ZONE_MONEY = 60

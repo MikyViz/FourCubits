@@ -10,7 +10,7 @@ const pinnedId = ref<number | null>(null)
 import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 
 const props = withDefaults(
-  defineProps<{ placement?: 'bottom' | 'left' | 'top'; pinOnClick?: boolean; block?: boolean }>(),
+  defineProps<{ placement?: 'bottom' | 'start' | 'top'; pinOnClick?: boolean; block?: boolean }>(),
   { placement: 'bottom', pinOnClick: false, block: false },
 )
 
@@ -48,11 +48,18 @@ function place() {
   const vw = window.innerWidth
   const vh = window.innerHeight
   const m = 8
-  let x = r.left
+  const rtl = document.documentElement.dir === 'rtl'
+  let x = rtl ? r.right - pw : r.left
   let y = r.bottom + 6
-  if (props.placement === 'left' && r.left - pw - m >= m) {
-    x = r.left - pw - m
-    y = r.top
+  if (props.placement === 'start') {
+    // «start» = сторона, где находится карта: слева в LTR, справа в RTL (меню тогда стоит слева)
+    if (!rtl && r.left - pw - m >= m) {
+      x = r.left - pw - m
+      y = r.top
+    } else if (rtl && r.right + m + pw <= vw - m) {
+      x = r.right + m
+      y = r.top
+    }
   } else if (props.placement === 'top' && r.top - ph - 6 >= m) {
     y = r.top - ph - 6
   }
@@ -129,7 +136,7 @@ onBeforeUnmount(() => {
   position: fixed; z-index: 30; max-width: min(340px, calc(100vw - 16px));
   padding: 10px 12px; background: #151c18; border: 1px solid var(--line);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); font-size: 0.85rem; line-height: 1.45; color: var(--text);
-  text-align: left; font-weight: 400;
+  text-align: start; font-weight: 400;
 }
 .pop :deep(p) { margin: 0 0 6px; }
 .pop :deep(p:last-child) { margin-bottom: 0; }

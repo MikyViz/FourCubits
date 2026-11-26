@@ -1,5 +1,6 @@
 import type { GameState } from '../core/types'
 import { addRes, capacity, clamp, countDone, log } from '../core/util'
+import { diff } from '../data/difficulty'
 import {
   GUARDPOST_UPKEEP, MONEY_PER_PERSON, NEIGHBOR_RADIUS, PERMIT_PASSIVE, SEC_BASE, SEC_PER_BORDER,
   SEC_CRITICAL, SEC_LEAVE_EVERY, SEC_PER_EXPOSURE, SEC_PER_PERSON, SEC_POST, STORAGE_INCOME,
@@ -43,9 +44,10 @@ export function neighborExposure(s: GameState): number {
 // безопасность — запас: охрана его восстанавливает, а жители, граница и соседи расходуют
 export function securityBreakdown(s: GameState) {
   const regen = SEC_BASE + SEC_POST * countDone(s, 'guardpost')
-  const people = SEC_PER_PERSON * s.resources.people
-  const border = SEC_PER_BORDER * zonePerimeter(s)
-  const neighbors = SEC_PER_EXPOSURE * neighborExposure(s)
+  const k = diff(s).securityLoad
+  const people = SEC_PER_PERSON * s.resources.people * k
+  const border = SEC_PER_BORDER * zonePerimeter(s) * k
+  const neighbors = SEC_PER_EXPOSURE * neighborExposure(s) * k
   return { regen, people, border, neighbors, net: regen - people - border - neighbors }
 }
 
@@ -58,7 +60,7 @@ export function economyTick(s: GameState) {
     s.permitRequests = s.permitRequests.filter((r) => r.arriveDay > s.day)
     const gain = due.reduce((a, r) => a + r.gain, 0)
     addRes(s, { permits: gain })
-    log(s, `Пришли разрешения: +${gain}`)
+    log(s, 'log.permitsArrived', { n: gain })
   }
 
   // рост населения: семьи приезжают, пока есть места и мораль не упала
@@ -71,7 +73,7 @@ export function economyTick(s: GameState) {
   // при критически низкой безопасности люди уезжают
   if (s.resources.security < SEC_CRITICAL && s.day % SEC_LEAVE_EVERY === 0 && s.resources.people > 0) {
     addRes(s, { people: -1, morale: -2 })
-    log(s, 'Семья уехала: в посёлке небезопасно')
+    log(s, 'log.familyLeft')
   }
 
   // мораль стремится к значению, зависящему от безопасности и давления

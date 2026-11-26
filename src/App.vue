@@ -1,18 +1,27 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import BuildMenu from './components/BuildMenu.vue'
 import EventModal from './components/EventModal.vue'
+import IntroModal from './components/IntroModal.vue'
 import MapCanvas from './components/MapCanvas.vue'
 import ResourceBar from './components/ResourceBar.vue'
+import SettingsModal from './components/SettingsModal.vue'
 import Tip from './components/Tip.vue'
+import { settings } from './core/settings'
 import { game, resetGame } from './core/store'
 import { tick } from './core/tick'
 import type { BuildingType } from './core/types'
+import { applyDirection, lang, t, tm } from './i18n'
 
 const tool = ref<BuildingType | 'zone' | null>(null)
 const message = ref('')
 const auto = ref(false)
+const showIntro = ref(!settings.skipIntro)
+const showSettings = ref(false)
 let timer: number | undefined
+
+// язык и направление текста (иврит справа налево) применяются сразу и при каждой смене
+watch(lang, applyDirection, { immediate: true })
 
 function stopAuto() {
   auto.value = false
@@ -32,8 +41,22 @@ function restart() {
   stopAuto()
   tool.value = null
   message.value = ''
-  resetGame()
+  showSettings.value = false
+  resetGame(settings.difficulty)
 }
+
+// пока открыто окно, время не идёт
+watch([showIntro, showSettings], ([a, b]) => {
+  if (a || b) stopAuto()
+})
+
+// пока партия не началась, смена сложности применяется сразу
+watch(
+  () => settings.difficulty,
+  (d) => {
+    if (game.day === 0 && game.buildings.length === 0) resetGame(d)
+  },
+)
 
 onBeforeUnmount(stopAuto)
 </script>
@@ -47,44 +70,37 @@ onBeforeUnmount(stopAuto)
         <div class="under">
           <p class="msg" aria-live="polite">{{ message }}</p>
           <Tip placement="top" pin-on-click>
-            <span class="legend-btn">Что на карте?</span>
+            <span class="legend-btn">{{ t('ui.legendBtn') }}</span>
             <template #content>
-              <p><strong>Обозначения</strong></p>
+              <p><strong>{{ t('legend.title') }}</strong></p>
               <ul class="legend">
-                <li><b class="dash">Жёлтый пунктир</b>: граница разрешённой зоны. Внутри строить по полной цене, снаружи дешевле, но растёт внимание.</li>
-                <li><b>«!» на здании</b>: построено вне зоны и привлекает проверяющих. Расширение зоны его легализует.</li>
-                <li><b>Белый пунктир вокруг здания</b>: его ещё можно перенести (перетащить на другую клетку) до следующего дня.</li>
-                <li><b>Число на недостроенном</b>: сколько дней осталось до конца стройки.</li>
-                <li><b>Цветная точка у деревни</b>: отношение к вам (красная враждебная, серая нейтральная, зелёная дружелюбная). Постройки рядом с деревней увеличивают расход безопасности.</li>
+                <li v-for="i in 5" :key="i">
+                  <b :class="{ dash: i === 1 }">{{ t('legend.k' + i) }}</b>: {{ t('legend.v' + i) }}
+                </li>
               </ul>
-              <p class="dim">Подсказки на всём интерфейсе: наведите курсор или нажмите.</p>
+              <p class="dim">{{ t('legend.hint') }}</p>
             </template>
           </Tip>
         </div>
       </section>
       <aside class="side">
         <div class="controls">
-          <button
-            :disabled="!!game.pendingEventId || game.status !== 'playing'"
-            title="Перейти к следующему дню"
-            @click="tick(game)"
-          >
-            Следующий день
+          <button :disabled="!!game.pendingEventId || game.status !== 'playing'" :title="t('ui.nextDay.title')" @click="tick(game)">
+            {{ t('ui.nextDay') }}
           </button>
-          <button
-            :class="{ on: auto }"
-            :disabled="game.status !== 'playing'"
-            title="Дни идут сами каждые 0,7 с, пока не случится событие"
-            @click="toggleAuto"
-          >
-            {{ auto ? 'Пауза' : 'Авто' }}
+          <button :class="{ on: auto }" :disabled="game.status !== 'playing'" :title="t('ui.auto.title')" @click="toggleAuto">
+            {{ auto ? t('ui.pause') : t('ui.auto') }}
           </button>
+        </div>
+        <div class="controls">
+          <button @click="showIntro = true">{{ t('ui.goal') }}</button>
+          <button @click="showSettings = true">{{ t('ui.settings') }}</button>
         </div>
         <BuildMenu v-model="tool" @message="message = $event" />
         <section class="log">
-          <h2>Журнал</h2>
+          <h2>{{ t('ui.log') }}</h2>
           <ul>
-            <li v-for="(l, i) in game.log" :key="i">{{ l }}</li>
+            <li v-for="(l, i) in game.log" :key="i">{{ t('log.prefix', { n: l.day }) }} {{ tm(l.msg) }}</li>
           </ul>
         </section>
       </aside>
@@ -94,11 +110,14 @@ onBeforeUnmount(stopAuto)
 
     <div v-if="game.status !== 'playing'" class="backdrop">
       <div class="end">
-        <h2>{{ game.status === 'won' ? 'Поселение устояло' : 'Поселение не выдержало' }}</h2>
-        <p>Дней прошло: {{ game.day }}</p>
-        <button @click="restart">Начать заново</button>
+        <h2>{{ game.status === 'won' ? t('end.won') : t('end.lost') }}</h2>
+        <p>{{ t('end.days', { n: game.day }) }}</p>
+        <button @click="restart">{{ t('end.restart') }}</button>
       </div>
     </div>
+
+    <IntroModal v-if="showIntro" @start="showIntro = false" @settings="showSettings = true" />
+    <SettingsModal v-if="showSettings" @close="showSettings = false" @restart="restart" />
   </div>
 </template>
 
@@ -109,7 +128,7 @@ onBeforeUnmount(stopAuto)
 .under { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 8px; }
 .msg { min-height: 1.4em; margin: 0; color: var(--line); }
 .legend-btn { font-size: 0.85rem; color: var(--muted); border-bottom: 1px dotted #55655b; white-space: nowrap; }
-.legend { margin: 0 0 6px; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.legend { margin: 0 0 6px; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 4px; }
 .legend .dash { color: var(--line); }
 .side { display: flex; flex-direction: column; gap: 16px; }
 .controls { display: flex; gap: 8px; }

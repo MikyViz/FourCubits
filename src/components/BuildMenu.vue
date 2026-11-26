@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { requestPermits } from '../core/actions'
 import { game } from '../core/store'
-import { PERMIT_REQUEST_COST, PERMIT_REQUEST_DAYS, PERMIT_REQUEST_GAIN, PERMIT_REQUEST_MAX } from '../data/balance'
-import { BUILDINGS, ILLEGAL_SCRUTINY, MOVE_FEE_MIN, MOVE_FEE_RATIO, buildCost } from '../data/buildings'
 import type { BuildingType } from '../core/types'
+import { fmt } from '../core/util'
+import {
+  GUARDPOST_UPKEEP, PERMIT_REQUEST_COST, PERMIT_REQUEST_DAYS, PERMIT_REQUEST_GAIN, PERMIT_REQUEST_MAX, SEC_POST,
+  STORAGE_INCOME, ZONE_MONEY, ZONE_PERMITS,
+} from '../data/balance'
+import { BUILDINGS, MOVE_FEE_MIN, MOVE_FEE_RATIO, buildCost, illegalScrutiny } from '../data/buildings'
+import { t } from '../i18n'
 import Tip from './Tip.vue'
 
 type Tool = BuildingType | 'zone'
@@ -11,83 +16,85 @@ const model = defineModel<Tool | null>({ required: true })
 const emit = defineEmits<{ message: [text: string] }>()
 const types = Object.keys(BUILDINGS) as BuildingType[]
 
-const pick = (t: Tool) => (model.value = model.value === t ? null : t)
-const price = (t: BuildingType, legal: boolean) => {
-  const c = buildCost(t, legal)
-  return `${c.money} ден. · ${c.days} дн.`
+const pick = (tool: Tool) => (model.value = model.value === tool ? null : tool)
+const price = (tp: BuildingType, legal: boolean) => {
+  const c = buildCost(tp, legal)
+  return `${c.money} ${t('unit.money')} · ${c.days} ${t('unit.days')}`
 }
-const apply = () => emit('message', requestPermits(game) ?? 'Заявка подана')
+const desc = (tp: BuildingType) =>
+  t(`b.${tp}.desc`, { n: tp === 'storage' ? STORAGE_INCOME : fmt(SEC_POST), u: GUARDPOST_UPKEEP })
+const apply = () => emit('message', requestPermits(game) ?? t('msg.requestSent'))
 </script>
 
 <template>
   <section class="menu">
     <div class="head">
-      <h2>Строить</h2>
-      <Tip placement="left">
+      <h2>{{ t('m.build') }}</h2>
+      <Tip placement="start">
         <template #default="{ toggle }">
-          <button type="button" class="help" aria-label="Как строить" @click="toggle">?</button>
+          <button type="button" class="help" :aria-label="t('m.help.aria')" @click="toggle">?</button>
         </template>
         <template #content>
-          <p>Выберите постройку и кликните по карте. Повторный клик по кнопке снимает выбор.</p>
-          <p>Клетка внутри пунктира строится по полной цене. Снаружи дешевле и быстрее, но по завершении добавляется +{{ ILLEGAL_SCRUTINY }} внимания. Цена и срок для клетки под курсором видны на карте.</p>
-          <p>Только что поставленную стройку можно перетащить на другую клетку, пока не наступил следующий день. Комиссия {{ Math.round(MOVE_FEE_RATIO * 100) }}% от цены, не меньше {{ MOVE_FEE_MIN }}; разница в цене клеток пересчитывается.</p>
-          <p class="dim">Нажмите «i» у постройки, чтобы узнать, что она даёт.</p>
+          <p>{{ t('m.help.p1') }}</p>
+          <p>{{ t('m.help.p2', { n: fmt(illegalScrutiny(game.difficulty)) }) }}</p>
+          <p>{{ t('m.help.p3', { pct: Math.round(MOVE_FEE_RATIO * 100), min: MOVE_FEE_MIN }) }}</p>
+          <p class="dim">{{ t('m.help.p4') }}</p>
         </template>
       </Tip>
     </div>
 
-    <Tip v-for="t in types" :key="t" block placement="left">
+    <Tip v-for="tp in types" :key="tp" block placement="start">
       <template #default="{ toggle }">
         <div class="card">
-          <button class="tool" :class="{ on: model === t }" @click="pick(t)">
-            <span class="name">{{ BUILDINGS[t].label }}</span>
-            <span class="price">В зоне: {{ price(t, true) }}</span>
-            <span class="price out">Вне зоны: {{ price(t, false) }}</span>
+          <button class="tool" :class="{ on: model === tp }" @click="pick(tp)">
+            <span class="name">{{ t(`b.${tp}.name`) }}</span>
+            <span class="price">{{ t('m.inZone', { p: price(tp, true) }) }}</span>
+            <span class="price out">{{ t('m.outZone', { p: price(tp, false) }) }}</span>
           </button>
-          <button type="button" class="help info" aria-label="Подробнее" @click="toggle">i</button>
+          <button type="button" class="help info" :aria-label="t('m.info.aria')" @click="toggle">i</button>
         </div>
       </template>
       <template #content>
-        <p><strong>{{ BUILDINGS[t].label }}</strong></p>
-        <p>{{ BUILDINGS[t].description }}</p>
-        <p class="dim">Вне зоны дешевле и быстрее, но по завершении +{{ ILLEGAL_SCRUTINY }} внимания.</p>
+        <p><strong>{{ t(`b.${tp}.name`) }}</strong></p>
+        <p>{{ desc(tp) }}</p>
+        <p class="dim">{{ t('m.outNote', { n: fmt(illegalScrutiny(game.difficulty)) }) }}</p>
       </template>
     </Tip>
 
     <div class="head">
-      <h2>Разрешения</h2>
+      <h2>{{ t('m.permits') }}</h2>
     </div>
 
-    <Tip block placement="left">
+    <Tip block placement="start">
       <template #default="{ toggle }">
         <div class="card">
           <button class="tool" :class="{ on: model === 'zone' }" @click="pick('zone')">
-            <span class="name">Расширить зону</span>
-            <span class="price">5 разрешений + 60 ден.</span>
+            <span class="name">{{ t('m.zone.name') }}</span>
+            <span class="price">{{ t('m.zone.price', { p: ZONE_PERMITS, m: ZONE_MONEY }) }}</span>
           </button>
-          <button type="button" class="help info" aria-label="Подробнее" @click="toggle">i</button>
+          <button type="button" class="help info" :aria-label="t('m.info.aria')" @click="toggle">i</button>
         </div>
       </template>
       <template #content>
-        <p><strong>Расширить зону</strong></p>
-        <p>Квадрат 5×5 вокруг выбранной клетки становится разрешённым, постройки в нём легализуются (пропадает «!»).</p>
-        <p class="dim">Граница становится длиннее, а с ней растёт расход безопасности.</p>
+        <p><strong>{{ t('m.zone.name') }}</strong></p>
+        <p>{{ t('m.zone.p1') }}</p>
+        <p class="dim">{{ t('m.zone.p2') }}</p>
       </template>
     </Tip>
 
-    <Tip block placement="left">
+    <Tip block placement="start">
       <template #default="{ toggle }">
         <div class="card">
           <button class="tool" @click="apply">
-            <span class="name">Подать заявку</span>
-            <span class="price">{{ PERMIT_REQUEST_COST }} ден. · в пути: {{ game.permitRequests.length }}</span>
+            <span class="name">{{ t('m.request.name') }}</span>
+            <span class="price">{{ t('m.request.price', { n: PERMIT_REQUEST_COST, k: game.permitRequests.length }) }}</span>
           </button>
-          <button type="button" class="help info" aria-label="Подробнее" @click="toggle">i</button>
+          <button type="button" class="help info" :aria-label="t('m.info.aria')" @click="toggle">i</button>
         </div>
       </template>
       <template #content>
-        <p><strong>Заявка на разрешения</strong></p>
-        <p>+{{ PERMIT_REQUEST_GAIN }} разрешения через {{ PERMIT_REQUEST_DAYS }} дн. Деньги уходят сразу. В пути может быть до {{ PERMIT_REQUEST_MAX }} заявок.</p>
+        <p><strong>{{ t('m.request.name') }}</strong></p>
+        <p>{{ t('m.request.p1', { g: PERMIT_REQUEST_GAIN, d: PERMIT_REQUEST_DAYS, max: PERMIT_REQUEST_MAX }) }}</p>
       </template>
     </Tip>
   </section>
@@ -98,10 +105,10 @@ const apply = () => emit('message', requestPermits(game) ?? 'Заявка под
 .head { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
 h2 { margin: 0; font-size: 1rem; }
 .card { position: relative; }
-.tool { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 8px 40px 8px 12px; text-align: left; }
+.tool { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding-block: 8px; padding-inline: 12px 40px; text-align: start; }
 .tool.on { outline: 2px solid var(--line); background: #33403A; }
 .name { font-weight: 600; }
 .price { font-size: 0.8rem; color: var(--muted); }
 .price.out { color: var(--line); }
-.info { position: absolute; top: 8px; right: 8px; }
+.info { position: absolute; top: 8px; inset-inline-end: 8px; }
 </style>

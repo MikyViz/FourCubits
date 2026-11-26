@@ -3,7 +3,10 @@ import { computed, ref, watchEffect } from 'vue'
 import { build, canMove, extendLegalZone, moveBuilding, moveQuote } from '../core/actions'
 import { game } from '../core/store'
 import type { BuildingType } from '../core/types'
-import { BUILDINGS, ILLEGAL_SCRUTINY, buildCost, moveFee } from '../data/buildings'
+import { fmt } from '../core/util'
+import { ZONE_MONEY, ZONE_PERMITS } from '../data/balance'
+import { buildCost, illegalScrutiny, moveFee } from '../data/buildings'
+import { isRtl, t } from '../i18n'
 
 const props = defineProps<{ tool: BuildingType | 'zone' | null }>()
 const emit = defineEmits<{ message: [text: string] }>()
@@ -70,6 +73,9 @@ function drawTip(ctx: CanvasRenderingContext2D, text: string, x: number, y: numb
   ctx.fillText(text, bx + 8, by + 12)
 }
 
+const where = (legal: boolean) => t(legal ? 'map.where.in' : 'map.where.out')
+const scrutinyNote = () => t('map.tip.scrutiny', { n: fmt(illegalScrutiny(game.difficulty)) })
+
 function draw() {
   const c = canvas.value
   const ctx = c?.getContext('2d')
@@ -77,6 +83,7 @@ function draw() {
   const { w, h } = game.map
   c.width = w * CELL
   c.height = h * CELL
+  ctx.direction = isRtl() ? 'rtl' : 'ltr' // иврит рисуется справа налево
 
   // местность и разрешённая зона
   for (let y = 0; y < h; y++) {
@@ -155,9 +162,10 @@ function draw() {
   }
   for (const v of game.villages) {
     const color = attitudeColor(v.attitude)
-    if (v.id === 'north') placeLabel(v.name, (w * CELL) / 2, 18, color, 'center')
-    else if (v.id === 'south') placeLabel(v.name, (w * CELL) / 2, h * CELL - 18, color, 'center')
-    else if (v.id === 'east') placeLabel(v.name, w * CELL - 6, (h * CELL) / 2, color, 'right')
+    const name = t(`village.${v.id}`)
+    if (v.id === 'north') placeLabel(name, (w * CELL) / 2, 18, color, 'center')
+    else if (v.id === 'south') placeLabel(name, (w * CELL) / 2, h * CELL - 18, color, 'center')
+    else if (v.id === 'east') placeLabel(name, w * CELL - 6, (h * CELL) / 2, color, 'right')
   }
 
   // курсор: перетаскивание, подсказка про перенос или подсказка про стройку
@@ -168,8 +176,8 @@ function draw() {
   if (dragId.value !== null) {
     const b = game.buildings.find((v) => v.id === dragId.value)
     if (!b) return
-    if (b.x === x && b.y === y) return drawTip(ctx, 'Отпустите на другой клетке, чтобы перенести', x, y, '#EDE8D8')
-    if (buildingAt(x, y)) return drawTip(ctx, 'Клетка занята', x, y, '#D9573F')
+    if (b.x === x && b.y === y) return drawTip(ctx, t('map.tip.dropElsewhere'), x, y, '#EDE8D8')
+    if (buildingAt(x, y)) return drawTip(ctx, t('map.tip.occupied'), x, y, '#D9573F')
     const legal = isLegal(x, y)
     const q = moveQuote(b, legal)
     ctx.globalAlpha = 0.7
@@ -179,15 +187,15 @@ function draw() {
     ctx.strokeStyle = accent
     ctx.lineWidth = 2
     ctx.strokeRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2)
-    const money = q.delta >= 0 ? `доплата ${q.delta}` : `возврат ${-q.delta}`
-    let text = `Перенести: ${money} ден. (комиссия ${q.fee}), ${legal ? 'в зоне' : 'вне зоны'}, ${q.days} дн.`
-    if (!legal) text += `, +${ILLEGAL_SCRUTINY} внимания`
+    const kind = q.delta >= 0 ? t('map.charge', { n: q.delta }) : t('map.refund', { n: -q.delta })
+    let text = t('map.tip.move', { kind, um: t('unit.money'), fee: q.fee, where: where(legal), days: q.days, ud: t('unit.days') })
+    if (!legal) text += scrutinyNote()
     return drawTip(ctx, text, x, y, accent)
   }
 
   const here = buildingAt(x, y)
   if (here && canMove(game, here)) {
-    return drawTip(ctx, `Потяните на другую клетку, чтобы перенести (комиссия ${moveFee(here.paid)} ден.)`, x, y, '#EDE8D8')
+    return drawTip(ctx, t('map.tip.draggable', { fee: moveFee(here.paid), um: t('unit.money') }), x, y, '#EDE8D8')
   }
   if (!props.tool) return
 
@@ -195,7 +203,7 @@ function draw() {
   const legalTile = isLegal(x, y)
   let text: string
   if (zone) {
-    text = 'Расширить зону: 5 разр. + 60 ден.'
+    text = t('map.tip.zone', { p: ZONE_PERMITS, m: ZONE_MONEY })
     ctx.strokeStyle = '#E8A200'
     ctx.lineWidth = 2
     ctx.setLineDash([4, 3])
@@ -203,8 +211,10 @@ function draw() {
     ctx.setLineDash([])
   } else {
     const cost = buildCost(props.tool, legalTile)
-    text = `${BUILDINGS[props.tool].label}, ${legalTile ? 'в зоне' : 'вне зоны'}: ${cost.money} ден., ${cost.days} дн.`
-    if (!legalTile) text += `, +${ILLEGAL_SCRUTINY} внимания`
+    text = t('map.tip.build', {
+      b: t(`b.${props.tool}.name`), where: where(legalTile), money: cost.money, um: t('unit.money'), days: cost.days, ud: t('unit.days'),
+    })
+    if (!legalTile) text += scrutinyNote()
   }
   const accent = zone || legalTile ? '#EDE8D8' : '#E8A200'
   ctx.strokeStyle = accent
@@ -225,12 +235,12 @@ function tileAt(e: MouseEvent) {
 }
 
 function onDown(e: PointerEvent) {
-  const t = tileAt(e)
-  if (!t) return
-  const b = buildingAt(t.x, t.y)
+  const tile = tileAt(e)
+  if (!tile) return
+  const b = buildingAt(tile.x, tile.y)
   if (!b || !canMove(game, b)) return
   dragId.value = b.id
-  hover.value = t
+  hover.value = tile
   canvas.value?.setPointerCapture(e.pointerId)
 }
 
@@ -245,10 +255,10 @@ function onUp(e: PointerEvent) {
   // после перетаскивания браузер всё равно шлёт click: глушим его
   justDragged = true
   setTimeout(() => (justDragged = false), 0)
-  const t = tileAt(e)
+  const tile = tileAt(e)
   const b = game.buildings.find((v) => v.id === id)
-  if (!t || !b || (t.x === b.x && t.y === b.y)) return
-  emit('message', moveBuilding(game, id, t.x, t.y) ?? 'Постройка перенесена')
+  if (!tile || !b || (tile.x === b.x && tile.y === b.y)) return
+  emit('message', moveBuilding(game, id, tile.x, tile.y) ?? t('msg.moved'))
 }
 
 function onLeave() {
@@ -257,10 +267,10 @@ function onLeave() {
 
 function onClick(e: MouseEvent) {
   if (justDragged) return
-  const t = tileAt(e)
-  if (!t) return
-  if (!props.tool) return emit('message', 'Выберите постройку в меню справа')
-  const err = props.tool === 'zone' ? extendLegalZone(game, t.x, t.y) : build(game, props.tool, t.x, t.y)
+  const tile = tileAt(e)
+  if (!tile) return
+  if (!props.tool) return emit('message', t('msg.pickBuilding'))
+  const err = props.tool === 'zone' ? extendLegalZone(game, tile.x, tile.y) : build(game, props.tool, tile.x, tile.y)
   emit('message', err ?? '')
 }
 </script>
