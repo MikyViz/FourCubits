@@ -53,7 +53,7 @@ export const en: Record<string, string> = {
   'ev.serious_incident.title': 'Serious incident', 'ev.serious_incident.text': 'A serious security incident occurred. There are casualties.',
   'ev.serious_incident.c0': 'Strengthen defenses', 'ev.serious_incident.c1': 'Stay the course',
   'ev.new_family.title': 'New family', 'ev.new_family.text': 'A family wants to move in.',
-  'ev.new_family.c0': 'Welcome them', 'ev.new_family.c1': 'No room for now',
+  'ev.new_family.c0': 'Welcome them', 'ev.new_family.c1': 'Decline',
   'ev.grant.title': 'Sponsor grant', 'ev.grant.text': 'A foundation is ready to fund your growth but expects a report.',
   'ev.grant.c0': 'Accept', 'ev.grant.c1': 'Decline', 'note.grant150': '+150 coins',
   'ev.village_trade.title': 'Trade offer', 'ev.village_trade.text': 'Merchants from the {village} offer to trade goods.',

@@ -53,7 +53,7 @@ export const ru: Record<string, string> = {
   'ev.serious_incident.title': 'Тяжёлый инцидент', 'ev.serious_incident.text': 'Произошёл серьёзный инцидент безопасности. Есть пострадавшие.',
   'ev.serious_incident.c0': 'Усилить защиту', 'ev.serious_incident.c1': 'Сохранить курс',
   'ev.new_family.title': 'Новая семья', 'ev.new_family.text': 'Семья хочет переехать к вам.',
-  'ev.new_family.c0': 'Принять', 'ev.new_family.c1': 'Пока нет места',
+  'ev.new_family.c0': 'Принять', 'ev.new_family.c1': 'Отказать',
   'ev.grant.title': 'Грант от спонсора', 'ev.grant.text': 'Фонд готов профинансировать развитие, но ждёт отчёта.',
   'ev.grant.c0': 'Принять', 'ev.grant.c1': 'Отказаться', 'note.grant150': '+150 денег',
   'ev.village_trade.title': 'Торговое предложение', 'ev.village_trade.text': 'Купцы из деревни «{village}» предлагают обмен товарами.',

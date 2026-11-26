@@ -53,7 +53,7 @@ export const he: Record<string, string> = {
   'ev.serious_incident.title': 'אירוע חמור', 'ev.serious_incident.text': 'אירע אירוע ביטחוני חמור. יש נפגעים.',
   'ev.serious_incident.c0': 'לחזק את ההגנה', 'ev.serious_incident.c1': 'להמשיך בקו הנוכחי',
   'ev.new_family.title': 'משפחה חדשה', 'ev.new_family.text': 'משפחה רוצה לעבור אליכם.',
-  'ev.new_family.c0': 'לקבל בברכה', 'ev.new_family.c1': 'אין מקום כרגע',
+  'ev.new_family.c0': 'לקבל בברכה', 'ev.new_family.c1': 'לדחות',
   'ev.grant.title': 'מענק מתורם', 'ev.grant.text': 'קרן מוכנה לממן את הצמיחה אך מצפה לדוח.',
   'ev.grant.c0': 'לקבל', 'ev.grant.c1': 'לסרב', 'note.grant150': '+150 מטבעות',
   'ev.village_trade.title': 'הצעת סחר', 'ev.village_trade.text': 'סוחרים מ{village} מציעים להחליף סחורות.',

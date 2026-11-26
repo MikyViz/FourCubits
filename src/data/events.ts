@@ -1,6 +1,6 @@
 import { chance, rand } from '../core/rng'
 import type { GameEvent, GameState, Msg } from '../core/types'
-import { addRes, addScrutiny, clamp, countDone, illegalBuilt } from '../core/util'
+import { addRes, addScrutiny, capacity, clamp, countDone, illegalBuilt } from '../core/util'
 import { diff } from './difficulty'
 
 // Тексты событий лежат в словарях: ev.<id>.title / .text / .c0 .c1 ... (порядок вариантов = порядок в choices).
@@ -238,18 +238,21 @@ export const EVENTS: GameEvent[] = [
   },
 
   // ───────── позитивные ─────────
-  {
-    id: 'new_family',
-    weight: (s) => (s.resources.morale >= 40 ? 1 : 0.2),
-    choices: [
-      {
-        apply: (s) => {
-          addRes(s, { people: 3, morale: 2 })
-        },
-      },
-      { apply: () => {} },
-    ],
+{
+  id: 'new_family',
+  weight: (s) => {
+    if (capacity(s) - s.resources.people < 3) return 0 // места для всей семьи нет
+    return s.resources.morale >= 40 ? 1 : 0.2
   },
+  choices: [
+    {
+      apply: (s) => {
+        addRes(s, { people: 3, morale: 2 })
+      },
+    },
+    { apply: () => {} },
+  ],
+},
   {
     id: 'grant',
     weight: (s) => (s.resources.morale >= 50 ? 0.5 : 0),
