@@ -72,11 +72,11 @@ const items = computed(() => {
             <p><strong>{{ t('res.money') }}</strong> <span class="dim">{{ perDay(fmtSigned(money.net, 0)) }}</span></p>
             <div class="rows">
               <div><span class="k">{{ t('tip.money.people') }}</span><span class="v">{{ fmtSigned(money.people, 0)
-              }}</span></div>
+                  }}</span></div>
               <div><span class="k">{{ t('tip.money.storage') }}</span><span class="v">{{ fmtSigned(money.storage, 0)
-              }}</span></div>
+                  }}</span></div>
               <div><span class="k">{{ t('tip.money.upkeep') }}</span><span class="v">{{ fmtSigned(-money.upkeep, 0)
-              }}</span></div>
+                  }}</span></div>
             </div>
             <p class="dim">{{ t('tip.money.note') }}</p>
           </template>
@@ -95,7 +95,7 @@ const items = computed(() => {
                 }) }}</span>
               </div>
               <div><span class="k">{{ t('tip.permits.events') }}</span><span class="v">{{ t('tip.permits.eventsVal')
-              }}</span></div>
+                  }}</span></div>
             </div>
             <p v-if="nextPermit !== null" class="dim">{{ t('tip.permits.queue', {
               n: game.permitRequests.length, d:
@@ -107,13 +107,13 @@ const items = computed(() => {
             <p><strong>{{ t('res.security') }}</strong> <span class="dim">{{ perDay(fmtSigned(sec.net)) }}</span></p>
             <div class="rows">
               <div><span class="k">{{ t('tip.sec.guard', { base: fmt(SEC_BASE), post: fmt(SEC_POST), n: posts })
-              }}</span><span class="v">{{ fmtSigned(sec.regen) }}</span></div>
+                  }}</span><span class="v">{{ fmtSigned(sec.regen) }}</span></div>
               <div><span class="k">{{ t('tip.sec.people') }}</span><span class="v">{{ fmtSigned(-sec.people) }}</span>
               </div>
               <div><span class="k">{{ t('tip.sec.border', { n: border }) }}</span><span class="v">{{
                 fmtSigned(-sec.border) }}</span></div>
               <div><span class="k">{{ t('tip.sec.neighbors') }}</span><span class="v">{{ fmtSigned(-sec.neighbors)
-              }}</span></div>
+                  }}</span></div>
             </div>
             <p>{{ t('tip.sec.p1') }}</p>
             <p class="dim">{{ t('tip.sec.p2', { crit: SEC_CRITICAL, days: SEC_LEAVE_EVERY }) }}</p>
@@ -164,20 +164,28 @@ const items = computed(() => {
   gap: 10px;
 }
 
+.brand img {
+  flex: none;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .brand-name {
   font-weight: 800;
   letter-spacing: 0.08em;
   font-size: 1.05rem;
-  color: var(--text);
+  line-height: 1.2;
 }
 
 .brand-name::after {
   content: '';
   display: block;
   margin-top: 3px;
-  height: 0;
   border-top: 3px dashed var(--line);
-  width: 100%;
 }
 
 .brand-day {
